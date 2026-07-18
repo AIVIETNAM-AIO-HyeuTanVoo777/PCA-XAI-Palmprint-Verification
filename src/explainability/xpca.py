@@ -140,7 +140,7 @@ def normalize_utility_scores(scores, method="min-max", temp=1.0, eta=0.1, eps=1e
         s_norm = (scores - min_val) / (max_val - min_val + eps)
         return 1.0 + eta * s_norm
         
-    elif method == "sort":
+    elif method in ["sort", "sort_weights"]:
         return scores
         
     else:
@@ -186,6 +186,9 @@ class XPCACalibration:
         if self.scale_method == "sort":
             # Descending order based on raw utility
             self.sort_indices_ = np.argsort(raw_utility)[::-1]
+        elif self.scale_method == "sort_weights":
+            self.sort_indices_ = np.argsort(raw_utility)[::-1]
+            self.weights_ = self.V_
             
         return self
         
@@ -198,5 +201,8 @@ class XPCACalibration:
             
         if self.scale_method == "sort":
             return projections[:, self.sort_indices_]
+        elif self.scale_method == "sort_weights":
+            sorted_projections = projections[:, self.sort_indices_]
+            return sorted_projections * self.weights_
             
         return projections * self.weights_

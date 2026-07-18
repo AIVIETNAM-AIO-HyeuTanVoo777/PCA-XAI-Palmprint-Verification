@@ -63,6 +63,12 @@ def main():
     xpca_sort_full.fit(tr_gabor_full_max, y_train, pca_gabor.explained_variance_)
     tr_gabor_sort_full = xpca_sort_full.transform(tr_gabor_full_max)
     te_gabor_sort_full = xpca_sort_full.transform(te_gabor_full_max)
+    
+    print(f"Pre-computing XPCA (Sort Weights) on full {max_comp} Gabor dimensions...")
+    xpca_sort_w_full = XPCACalibration(scale_method="sort_weights", bootstrap_iter=100)
+    xpca_sort_w_full.fit(tr_gabor_full_max, y_train, pca_gabor.explained_variance_)
+    tr_gabor_sort_w_full = xpca_sort_w_full.transform(tr_gabor_full_max)
+    te_gabor_sort_w_full = xpca_sort_w_full.transform(te_gabor_full_max)
 
     # 4. Comparative loop across dimensions
     base_dimensions = [32, 64, 128, 256, 512]
@@ -184,10 +190,22 @@ def main():
             "auc": res_gab_xpca_sort["auc"]
         })
         
+        # 2f. Gabor + XPCA (Sort Weights)
+        tr_gab_sort_w = tr_gabor_sort_w_full[:, :k]
+        te_gab_sort_w = te_gabor_sort_w_full[:, :k]
+        res_gab_xpca_sort_w = evaluate_verification(tr_gab_sort_w, y_train, te_gab_sort_w, y_test, n_classes)
+        records.append({
+            "dimension": k,
+            "method": "Gabor + XPCA (Sort Weights)",
+            "eer": res_gab_xpca_sort_w["eer"] * 100,
+            "accuracy": res_gab_xpca_sort_w["accuracy"] * 100,
+            "auc": res_gab_xpca_sort_w["auc"]
+        })
+        
         # Print EERs for immediate summary
         print(f"  [Raw Pixels] PCA EER: {res_raw_pca['eer']*100:.2f}% | XPCA (Min-Max) EER: {res_raw_xpca['eer']*100:.2f}%")
         print(f"  [Gabor Features] PCA EER: {res_gab_pca['eer']*100:.2f}%")
-        print(f"  [Gabor + XPCA] Min-Max: {res_gab_xpca_mm['eer']*100:.2f}% | Softmax: {res_gab_xpca_sm['eer']*100:.2f}% | Residual: {res_gab_xpca_res['eer']*100:.2f}% | Sort: {res_gab_xpca_sort['eer']*100:.2f}%")
+        print(f"  [Gabor + XPCA] Min-Max: {res_gab_xpca_mm['eer']*100:.2f}% | Residual: {res_gab_xpca_res['eer']*100:.2f}% | Sort: {res_gab_xpca_sort['eer']*100:.2f}% | Sort Weights: {res_gab_xpca_sort_w['eer']*100:.2f}%")
 
     # 5. Output and format findings
     df_results = pd.DataFrame(records)
@@ -205,7 +223,7 @@ def main():
         "Raw PCA", "Raw XPCA (Min-Max)", 
         "Gabor + PCA", 
         "Gabor + XPCA (Min-Max)", "Gabor + XPCA (Softmax)", "Gabor + XPCA (Residual)",
-        "Gabor + XPCA (Sort)"
+        "Gabor + XPCA (Sort)", "Gabor + XPCA (Sort Weights)"
     ]
     pivot_df = pivot_df.reindex(ordered_methods)
     print(pivot_df.to_markdown(floatfmt=".2f"))
