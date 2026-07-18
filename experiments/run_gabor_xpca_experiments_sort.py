@@ -48,6 +48,15 @@ def main():
     pca_gabor = PCA(n_components=512, random_state=42)
     pca_gabor.fit(X_train_gabor)
     
+    # Pre-compute Sort mode on the full 512-dimensional Gabor space
+    print("\nPre-computing XPCA (Sort) on full 512 Gabor dimensions for Feature Selection...")
+    tr_gabor_full_512 = pca_gabor.transform(X_train_gabor)
+    te_gabor_full_512 = pca_gabor.transform(X_test_gabor)
+    xpca_sort_full = XPCACalibration(scale_method="sort", bootstrap_iter=100)
+    xpca_sort_full.fit(tr_gabor_full_512, y_train, pca_gabor.explained_variance_)
+    tr_gabor_sort_full = xpca_sort_full.transform(tr_gabor_full_512)
+    te_gabor_sort_full = xpca_sort_full.transform(te_gabor_full_512)
+
     # 4. Comparative loop across dimensions
     dimensions = [32, 64, 128, 256, 512]
     records = []
@@ -150,11 +159,10 @@ def main():
             "auc": res_gab_xpca_res["auc"]
         })
         
-        # 2e. Gabor + XPCA (Sort Mode - Only Reorder, No Scaling)
-        xpca_gab_sort = XPCACalibration(scale_method="sort", bootstrap_iter=100)
-        xpca_gab_sort.fit(tr_gabor, y_train, pca_gabor.explained_variance_[:k])
-        tr_gab_sort = xpca_gab_sort.transform(tr_gabor)
-        te_gab_sort = xpca_gab_sort.transform(te_gabor)
+        # 2e. Gabor + XPCA (Sort Mode) - Feature Selection from full 512 space
+        # We take the top k columns from the PRE-SORTED 512-dimensional space
+        tr_gab_sort = tr_gabor_sort_full[:, :k]
+        te_gab_sort = te_gabor_sort_full[:, :k]
         res_gab_xpca_sort = evaluate_verification(tr_gab_sort, y_train, te_gab_sort, y_test, n_classes)
         records.append({
             "dimension": k,
