@@ -140,6 +140,9 @@ def normalize_utility_scores(scores, method="min-max", temp=1.0, eta=0.1, eps=1e
         s_norm = (scores - min_val) / (max_val - min_val + eps)
         return 1.0 + eta * s_norm
         
+    elif method == "sort":
+        return scores
+        
     else:
         raise ValueError(f"Unknown scaling method: {method}")
 
@@ -159,6 +162,7 @@ class XPCACalibration:
         self.V_ = None
         self.D_ = None
         self.N_ = None
+        self.sort_indices_ = None
         
     def fit(self, train_proj, y_train, eigenvalues):
         k = train_proj.shape[1]
@@ -178,12 +182,21 @@ class XPCACalibration:
         
         # 5. Normalize weights
         self.weights_ = normalize_utility_scores(raw_utility, method=self.scale_method, temp=self.temp, eta=self.eta)
+        
+        if self.scale_method == "sort":
+            # Descending order based on raw utility
+            self.sort_indices_ = np.argsort(raw_utility)[::-1]
+            
         return self
         
     def transform(self, projections):
         """
-        Applies diagonal weight matrix to projections.
+        Applies diagonal weight matrix to projections, or reorders them if method is 'sort'.
         """
         if self.weights_ is None:
             raise ValueError("XPCACalibration has not been fitted yet.")
+            
+        if self.scale_method == "sort":
+            return projections[:, self.sort_indices_]
+            
         return projections * self.weights_
