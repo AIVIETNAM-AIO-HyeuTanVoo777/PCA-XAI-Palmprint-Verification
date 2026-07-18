@@ -188,7 +188,7 @@ class XPCACalibration:
             self.sort_indices_ = np.argsort(raw_utility)[::-1]
         elif self.scale_method == "sort_weights":
             self.sort_indices_ = np.argsort(raw_utility)[::-1]
-            self.weights_ = self.V_
+            self.weights_ = self.V_[self.sort_indices_]
             
         return self
         
