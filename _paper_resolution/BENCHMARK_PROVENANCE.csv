@@ -1,0 +1,3 @@
+filename,script_provenance,hyperparameters,dataset_split,test_set_leakage,status
+results/tables/comprehensive_benchmark.csv,experiments/optimize_gabor_xpca.py,Fixed across all dimensions: shrinkage=0.7 eta=0.1 weights=(0.0 0.8 0.2),IITD Deterministic (First 3 train remaining test),Yes (Hyperparameters were optimized on test set EER at k=128),LEAKED
+results/tables/dimension_specific_sota_results.csv,experiments/optimize_dimension_specific.py,Tuned per-dimension: sweeps shrinkage in [0.1..0.9] eta in [0.0..0.3] weights config,IITD Deterministic (First 3 train remaining test),Yes (Tuned each dimension individually directly on test set EER),LEAKED / UNVERIFIED

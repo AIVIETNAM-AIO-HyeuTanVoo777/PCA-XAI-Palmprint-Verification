@@ -1,0 +1,1 @@
+{"k": 128, "orientations": 4, "lambda": 8.0, "sigma": 4.0, "gamma": 0.5, "downsample": [64, 64], "weights": [0.2, 0.6, 0.2], "shrinkage": 0.1, "eta": 0.2}

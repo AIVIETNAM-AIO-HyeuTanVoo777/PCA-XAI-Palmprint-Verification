@@ -1,0 +1,459 @@
+\documentclass[conference]{IEEEtran}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{cite}
+\usepackage{url}
+\usepackage{bm}
+
+\begin{document}
+
+\title{Explainable PCA Framework for Palmprint Recognition:\\Feature Compression, Interpretability, and Verification Performance}
+
+\author{
+\IEEEauthorblockN{First Author\IEEEauthorrefmark{1}, Second Author\IEEEauthorrefmark{1}, Third Author\IEEEauthorrefmark{1}}
+\IEEEauthorblockA{\IEEEauthorrefmark{1}Department of Computer Science\\
+FPT University, Hanoi, Vietnam\\
+Email: \{author1, author2, author3\}@fpt.edu.vn}
+\IEEEauthorblockN{\emph{Standard IEEE Conference Paper Template Draft}}
+}
+
+\maketitle
+
+% ===========================================================================
+% ABSTRACT
+% ===========================================================================
+\begin{abstract}
+Principal Component Analysis (PCA) is widely deployed for feature compression and template generation in biometric palmprint systems, producing low-dimensional representations commonly known as ``EigenPalms.'' Despite its usage, PCA is typically treated as a black-box optimizer: the number of retained components is selected empirically without a systematic auditing of what semantic information is preserved, which components encode class-discriminative signatures, and how representation fidelity correlates with operational verification metrics. This paper addresses this gap by introducing a multi-level explainability audit framework for PCA representations in touchless palmprint verification. Evaluating the framework on the IIT Delhi (IITD) Touchless Palmprint Database, we examine the linear eigenspace across dimensions $k \in \{16, 32, 64, 128, 256, 512\}$. We formally define and automatically compute the Operational Saturation Point (OSP) using statistical plateau detection and confidence interval overlap rules over 20 randomized trials. We subject the system to a subject-disjoint open-set generalization stress test, revealing that performance plateaus at $k{=}128$ for closed-set (EER of $8.79\%$) and $k{=}256$ for open-set (EER of $9.85\%$), beyond which additional dimensions yield no statistically significant biometric improvements. We reformulate the Complexity-Aware Explainability Score (CAES++) under Rate-Distortion and empirical Information Bottleneck (IB) principles to theoretically ground dimension selection. A PCA+LDA supervised baseline shows that incorporating label information improves EER to $6.64\%$, demonstrating the limits of unsupervised PCA templates. These findings provide transparent guidelines for matching engine design.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Touchless palmprint verification, explainable AI, principal component analysis, feature compression, statistical saturation, rate-distortion, Information Bottleneck.
+\end{IEEEkeywords}
+
+% ===========================================================================
+% I. INTRODUCTION
+% ===========================================================================
+\section{Introduction}
+\label{sec:introduction}
+
+Biometric palmprint verification is a highly secure physiological modality due to the richness of epidermal textures, flexion creases, and secondary wrinkles on the human palm~\cite{zhang2003online, kong2009survey}. Modern matching engines require hygienic, contact-free acquisition. However, touchless palmprint systems introduce spatial variations, rotation offsets, hand translations, and ambient illumination gradients that degrade similarity scores~\cite{kumar2008incorporating}. To manage computational matching speeds and storage requirements in embedded platforms, high-dimensional raw pixel representations must be projected into compact, orthogonal feature vectors using techniques like Principal Component Analysis (PCA)~\cite{lu2003palmprint}.
+
+Despite its widespread application, PCA is typically deployed without representation-level auditing. System designers select the dimension hyperparameter $k$ based on empirical Equal Error Rate (EER) targets, leaving major questions unresolved: (i) which principal components carry identity-discriminative information versus global illumination biases? (ii) at what dimension does operational performance saturation occur? and (iii) does visual reconstruction quality directly translate to verification accuracy?
+
+In explainable AI (XAI) literature, dominant approaches such as SHAP~\cite{lundberg2017shap}, LIME~\cite{ribeiro2016lime}, and Grad-CAM~\cite{selvaraju2017gradcam} focus on explaining deep neural networks. These are post-hoc, classifier-centric methods that explain decisions on individual test queries rather than auditing the representation space itself. 
+
+To address these limitations, this paper proposes an intrinsic explainability framework to audit PCA biometric templates. We investigate four main research questions:
+\begin{itemize}
+    \item \textbf{RQ1 (Information Preservation):} How much biometric information is preserved as PCA dimensionality increases?
+    \item \textbf{RQ2 (Component Importance):} Which principal components contribute most to verification performance?
+    \item \textbf{RQ3 (Dimensional Saturation):} At what dimensionality does operational performance saturation occur?
+    \item \textbf{RQ4 (Fidelity vs. Utility):} Can reconstruction fidelity explain or predict biometric discrimination ability?
+\end{itemize}
+
+Rather than claiming a novel PCA variant, we reposition the paper's contribution as a systematic audit of the linear eigenspace. The primary contributions are:
+\begin{enumerate}
+    \item A structured multi-level audit framework linking global variance, EigenPalm spatial activations, progressive reconstructions, regularized component separation, and match score density fields.
+    \item A mathematically grounded Complexity-Aware Explainability Score (CAES++) derived from Rate-Distortion theory and the empirical Information Bottleneck (IB) principle, showing its sensitivity across weight configurations.
+    \item An Operational Saturation Point (OSP) defined via statistical plateau and confidence interval overlap rules, validated under a subject-disjoint open-set generalization stress test over 20 randomized splits.
+    \item A stabilized Fisher component analysis with pooled variance shrinkage, contrasted with a supervised PCA+LDA baseline.
+\end{enumerate}
+
+% ===========================================================================
+% II. RELATED WORK
+% ===========================================================================
+\section{Related Work}
+\label{sec:related}
+
+Subspace projection methods are classical techniques in biometric template compression. Turk and Pentland~\cite{turk1991eigenfaces} established the ``Eigenfaces'' concept, which was later adapted to palmprint recognition as ``EigenPalms'' by Lu et al.~\cite{lu2003palmprint}. Kumar~\cite{kumar2008incorporating} evaluated touchless palmprint verification using PCA and distance-based matching on the IITD dataset. However, these works focused exclusively on optimizing EER or speed, treating representation dimension $k$ as a non-interpretable parameter.
+
+Explainable AI in biometrics has focused on deep networks using attribution maps~\cite{selvaraju2017gradcam} or local surrogates~\cite{ribeiro2016lime}. These post-hoc methods do not analyze representational trade-offs during compression. Interpretable dimensionality reduction has been limited to inspecting eigenvector coefficient loadings~\cite{jolliffe2002pca}. A rigorous link between reconstruction metrics (SSIM, PSNR) and verification error has been absent. Table~\ref{tab:comparison} contrasts our approach with related literature.
+
+\begin{table*}[t]
+\centering
+\caption{Comparison of related explainability and representation analysis approaches in biometrics.}
+\label{tab:comparison}
+\begin{tabular}{@{}llcccc@{}}
+\toprule
+\textbf{Method} & \textbf{Dataset} & \textbf{Explainability Layer} & \textbf{Verification Analysis} & \textbf{Component Analysis} & \textbf{Interpretability Level} \\
+\midrule
+Kumar~\cite{kumar2008incorporating} & IITD & None & Empirical baseline & None & Representation only \\
+Lu et al.~\cite{lu2003palmprint} & PolyU & None & Empirical baseline & Coarse visualization & Low (qualitative only) \\
+Post-hoc XAI~\cite{selvaraju2017gradcam, lundberg2017shap} & Various & Post-hoc attribution & Classifier-centric & None & Decision level \\
+Ours (CAES++) & IITD & Intrinsic \& structural & Systematic trade-off audit & Stabilized Fisher \& ablation & Multi-level (systematic) \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+% ===========================================================================
+% III. METHODOLOGY
+% ===========================================================================
+\section{Methodology}
+\label{sec:methodology}
+
+\subsection{Dataset}
+All experiments are conducted on the \textbf{IIT Delhi (IITD) Touchless Palmprint Database (v1.0)}~\cite{kumar2008incorporating}. It contains 2,601 grayscale bitmap images from 230 subjects. Treating the left and right hands of each subject as separate biometric classes yields $N_{\text{classes}} = 460$ unique palm classes. Each class contains 5 to 7 pre-segmented, cropped region of interest (ROI) images of resolution $150 \times 150$ pixels. Images are resized to $128 \times 128$ pixels using bilinear interpolation, yielding a raw feature dimension of $D = 16,384$. 
+
+\subsection{Preprocessing}
+Each raw grayscale vector $x \in \mathbb{R}^D$ is normalized to $[0, 1]$ via division by 255. We then apply \textbf{individual sample zero-mean normalization}:
+\begin{equation}
+    x_{\text{zm}} = x_{\text{norm}} - \mu_{\text{sample}}
+    \label{eq:zeromean}
+\end{equation}
+where $\mu_{\text{sample}} = \frac{1}{D} \sum_{i=1}^D x_{\text{norm}, i}$ is the scalar average pixel intensity of that specific image. This step is critical in touchless acquisition to eliminate low-frequency illumination variations across sessions.
+
+\subsection{PCA Feature Extraction via SVD}
+Instead of computing the massive $D \times D$ covariance matrix directly, which is computationally expensive and numerically unstable for $D=16,384$, we utilize Singular Value Decomposition (SVD). Let $\bar{X} \in \mathbb{R}^{N \times D}$ be the mean-centered training data matrix where each row is $x_{\text{zm}}^{(n)} - \mu_{\text{global}}$, and $\mu_{\text{global}}$ is the training set mean. SVD decomposes $\bar{X}$ as:
+\begin{equation}
+    \bar{X} = U S V^\top
+    \label{eq:svd}
+\end{equation}
+where $U \in \mathbb{R}^{N \times N}$ and $V \in \mathbb{R}^{D \times D}$ are orthogonal matrices of left and right singular vectors, and $S \in \mathbb{R}^{N \times D}$ contains singular values $s_i$. The principal component axes correspond to the columns of $V$. The eigenvalues $\lambda_i$ of the sample covariance matrix $\Sigma = \frac{1}{N} \bar{X}^\top \bar{X}$ are computed as:
+\begin{equation}
+    \lambda_i = \frac{s_i^2}{N}
+    \label{eq:eigenvalues}
+\end{equation}
+Projecting a sample $x_{\text{zm}}$ using the top $k$ axes $W_k = V_k \in \mathbb{R}^{D \times k}$ yields the compact representation $z = (x_{\text{zm}} - \mu_{\text{global}})^\top W_k$.
+
+\subsection{Verification Framework}
+For each class $c$, an enrolled template $t_c \in \mathbb{R}^k$ is computed by taking the average of the projected training vectors belonging to $c$. Verification matching uses Cosine Similarity:
+\begin{equation}
+    s(z_{\text{probe}}, t_c) = \frac{z_{\text{probe}} \cdot t_c}{\|z_{\text{probe}}\|_2 \|t_c\|_2}
+    \label{eq:cosine}
+\end{equation}
+Cosine similarity isolates angular alignment and removes magnitude biases. Genuine and impostor comparisons are run across the test split to compute the EER and AUC.
+
+\subsection{Explainability Framework}
+Our framework audits PCA representations across five levels of interpretability:
+\begin{itemize}
+    \item \textbf{Level 1: Variance Retention Analysis.} Investigates global information preservation using the cumulative explained variance ratio.
+    \item \textbf{Level 2: EigenPalm Visualization.} Reshapes eigenvectors $w_i$ back to $128 \times 128$ spatial images to interpret physical features.
+    \item \textbf{Level 3: Reconstruction Fidelity Analysis.} Reconstructs test samples back to the image space, measuring structural preservation (SSIM, PSNR, MSE).
+    \item \textbf{Level 4: Component Importance Analysis.} Quantifies class-separability of individual eigenvectors.
+    \item \textbf{Level 5: Verification Performance Analysis.} Examines matching score density fields and overall verification metrics.
+\end{itemize}
+
+% ===========================================================================
+% IV. FISHER COMPONENT IMPORTANCE ANALYSIS
+% ===========================================================================
+\section{Fisher Component Importance Analysis}
+\label{sec:fisher}
+
+While PCA eigenvectors are ordered by variance, high variance does not guarantee biometric discriminative power. To quantify the verification utility of each component, we compute a stabilized Fisher Score. 
+
+Let $z_i^{(n)}$ be the scalar projection of training sample $n$ on component $i$. For class $c \in \{0, \ldots, C-1\}$, let the class mean be $\mu_{c, i}$ and the class variance be $\sigma_{c, i}^2$. The unregularized intra-class variance is $\sigma_{\text{intra}, i}^2 = \frac{1}{C} \sum_c \sigma_{c, i}^2$. Due to the small sample size problem ($N_c = 3$ training samples per class), $\sigma_{\text{intra}, i}^2$ can be unstable. We regularize it using shrinkage towards the global variance (eigenvalue $\lambda_i$):
+\begin{equation}
+    \sigma_{\text{intra}, i, \text{reg}}^2 = (1 - \lambda_{\text{shrink}}) \sigma_{\text{intra}, i}^2 + \lambda_{\text{shrink}} \lambda_i
+    \label{eq:shrinkage}
+\end{equation}
+where $\lambda_{\text{shrink}} = 0.1$. The stabilized Fisher Score $F_i$ for component $i$ is:
+\begin{equation}
+    F_i = \frac{\sigma_{\text{inter}, i}^2}{\sigma_{\text{intra}, i, \text{reg}}^2 + \epsilon}
+    \label{eq:fisher}
+\end{equation}
+where $\sigma_{\text{inter}, i}^2 = \frac{1}{C} \sum_c (\mu_{c, i} - \mu_{\text{global}, i})^2$ is the inter-class variance, and $\epsilon = 10^{-6}$. This stabilizes score estimates for low-variance components.
+
+We explicitly inspect the alignment of variance ordering against discriminative ordering to test if high-variance components carry the most separability.
+
+% ===========================================================================
+% V. DIMENSIONAL SATURATION ANALYSIS
+% ===========================================================================
+\section{Dimensional Saturation Analysis}
+\label{sec:saturation}
+
+To prevent subjective, manual dimension selection, we formally define the \textbf{Operational Saturation Point (OSP)} using statistical plateau detection.
+
+Let $\text{EER}_m(k)$ be the Equal Error Rate obtained at dimension $k$ on randomized split trial $m$. Let $CI(k)$ be the 95\% confidence interval for EER across $M=20$ runs:
+\begin{equation}
+    CI(k) = [ \text{EER}_{\text{mean}}(k) - \text{CI}_{\text{half}}(k), \; \text{EER}_{\text{mean}}(k) + \text{CI}_{\text{half}}(k) ]
+    \label{eq:ci_def}
+\end{equation}
+We define OSP under three strict mathematical criteria:
+\begin{enumerate}
+    \item \textbf{CI Overlap Rule}: The OSP is the smallest $k^*$ such that for all subsequent consecutive pairs $k' \ge k^*$, the 95\% confidence intervals overlap:
+    \begin{equation}
+        CI(k') \cap CI(k'_{\text{next}}) \neq \emptyset \quad \forall k' \ge k^*
+        \label{eq:ci_overlap}
+    \end{equation}
+    \item \textbf{Marginal Utility Stopping Rule}: Let the marginal EER utility be $\Delta U(k) = \text{EER}_{\text{mean}}(k_{\text{prev}}) - \text{EER}_{\text{mean}}(k)$. OSP is the smallest dimension satisfying $\Delta U(k^*) < \epsilon$ for all dimensions beyond $k^*$, with EER improvement threshold $\epsilon = 0.5\%$.
+    \item \textbf{Statistical Equality Rule}: The smallest $k^*$ whose EER distribution is statistically equivalent to EER at $k_{\max} = 512$ using a two-tailed paired $t$-test with a Bonferroni-corrected significance threshold $\alpha_{\text{Bonferroni}} = 0.05 / 5 = 0.01$.
+\end{enumerate}
+
+To evaluate generalizability, we subject the framework to a **subject-disjoint open-set generalization stress test**. We randomly partition the 230 subjects into 150 training subjects (for PCA fitting) and 80 test subjects (for template verification). On the 80 unseen test subjects, templates are enrolled using the first 3 images, and verification EER is evaluated on the remaining images across 20 randomized splits.
+
+% ===========================================================================
+% VI. COMPLEXITY-AWARE EXPLAINABILITY SCORE
+% ===========================================================================
+\section{Complexity-Aware Explainability Score}
+\label{sec:caes}
+
+We ground the Complexity-Aware Explainability Score (CAES++) in the empirical Information Bottleneck (IB) principle. The Information Bottleneck seeks to find a representation $Z_k$ that maximizes the mutual information with the target label $Y$ while compressing the input representation $X$:
+\begin{equation}
+    \max_{Z_k} \; I(Z_k; Y) - \beta_{\text{IB}} I(Z_k; X)
+    \label{eq:ib}
+\end{equation}
+We formulate CAES++ as an empirical approximation of this objective:
+\begin{equation}
+    \text{CAES}(k) = R(k) - \beta \cdot D(k) + \gamma \cdot I(Z_k; Y) - \mu \cdot C(k)
+    \label{eq:caes}
+\end{equation}
+The four grounded terms are:
+\begin{enumerate}
+    \item \textbf{Rate $R(k)$}: Approximates input compression $I(Z_k; X)$ via the Shannon-style information rate of the Gaussian channel: $R(k) = \sum_{i=1}^k \ln(1 + \lambda_i / \sigma^2)$, with noise variance $\sigma^2 = 1.0$.
+    \item \textbf{Distortion $D(k)$}: Measures representation loss via the total reconstruction Mean Squared Error over the image space: $D(k) = D_{\text{dim}} \cdot \text{MSE}_{\text{pixel}}(k)$, where $D_{\text{dim}} = 16,384$.
+    \item \textbf{Discriminative Information $I(Z_k; Y)$}: Proxies target mutual information via the sum of log-Fisher gains: $I(Z_k; Y) \approx \sum_{i=1}^k \ln(1 + F_i)$.
+    \item \textbf{Complexity $C(k)$}: Penalizes template description complexity using the Minimum Description Length (MDL) effective feature dimension penalty: $C(k) = k \ln(D_{\text{dim}})$.
+\end{enumerate}
+The parameters $\beta$, $\gamma$, and $\mu$ represent the system designer's trade-off priorities between reconstruction fidelity, biometric separability, and spatial complexity.
+
+% ===========================================================================
+% VII. EXPERIMENTAL RESULTS
+% ===========================================================================
+\section{Experimental Results}
+\label{sec:results}
+
+\subsection{Variance Analysis}
+The cumulative explained variance ratio shows that a substantial portion of original image energy is concentrated in early components. From the training set covariance trace, the top 16 components capture $45.56\%$ of the total $D$-dimensional variance. Variance retention increases to $78.49\%$ at $k=128$, and reaches $93.75\%$ at $k=512$. 
+\\
+\textbf{Key Finding:} PCA acts as an efficient energy compressor, capturing over $78\%$ of image variance within a 128-dimensional subspace.
+
+\subsection{EigenPalm Analysis}
+Visualizing the reshaped eigenvectors $w_i$ using a diverging colormap reveals spatial activation fields:
+\begin{itemize}
+    \item \textbf{PC 1--4} represent global palm structures and illumination shading fields.
+    \item \textbf{PC 5--15} activate along primary flexion creases (life, head, and heart lines).
+    \item \textbf{PC 16--50} capture local secondary wrinkles and skin texture.
+    \item \textbf{PC 100+} display high-frequency noise patterns and pixel reflections.
+\end{itemize}
+\textbf{Key Finding:} Principal components possess physical semantic mappings, transitioning from global illumination to primary anatomy, secondary structures, and finally sensor noise.
+
+\subsection{Reconstruction Analysis}
+We perform a dataset-wide reconstruction audit on the 1,221 test images (adding back individual sample means). Table~\ref{tab:reconstruction} summarizes the Mean $\pm$ Std. 
+
+\begin{table}[h]
+\centering
+\caption{Dataset-wide reconstruction metrics (Mean $\pm$ Std).}
+\label{tab:reconstruction}
+\begin{tabular}{@{}cccc@{}}
+\toprule
+\textbf{Dimension $k$} & \textbf{MSE} & \textbf{PSNR (dB)} & \textbf{SSIM} \\
+\midrule
+16  & 0.0101 $\pm$ 0.0040 & 20.26 $\pm$ 1.67 & 0.3646 $\pm$ 0.0739 \\
+32  & 0.0083 $\pm$ 0.0034 & 21.16 $\pm$ 1.72 & 0.4025 $\pm$ 0.0732 \\
+64  & 0.0065 $\pm$ 0.0028 & 22.22 $\pm$ 1.76 & 0.4468 $\pm$ 0.0720 \\
+128 & 0.0050 $\pm$ 0.0022 & 23.41 $\pm$ 1.82 & 0.5035 $\pm$ 0.0709 \\
+256 & 0.0039 $\pm$ 0.0018 & 24.53 $\pm$ 1.88 & 0.5643 $\pm$ 0.0690 \\
+512 & 0.0031 $\pm$ 0.0015 & 25.52 $\pm$ 1.95 & 0.6254 $\pm$ 0.0656 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Sorting by SSIM at $k=128$, the best reconstructed sample is Index 458 (SSIM $= 0.7929$, PSNR $= 32.68$ dB), the worst is Index 1181 (SSIM $= 0.2731$, PSNR $= 18.85$ dB), and the median is Index 1077 (SSIM $= 0.5043$, PSNR $= 25.80$ dB).
+\\
+\textbf{Key Finding:} Structural similarity (SSIM) scales monotonically with dimension $k$, but individual sample differences remain high due to pose variations and localized touchless reflections.
+
+\subsection{Component Importance}
+Using Eq.~\ref{eq:fisher}, we compute stabilized Fisher Scores. The Pearson correlation between eigenvalues and Fisher Scores is $0.6423$, indicating that higher variance eigenvectors generally carry greater discriminative power. However, they do not align perfectly. The top Fisher component is PC 5 ($F_5 = 3.2270$), followed by PC 1 ($F_1 = 3.1673$), PC 7 ($F_7 = 2.7891$), and PC 6 ($F_6 = 2.7835$).
+\\
+\textbf{Key Finding:} Mid-variance principal components consistently show higher Fisher stability across splits, with crease-encoding structures (such as PC 5) exhibiting higher discriminability than global eigenvectors (such as PC 2).
+
+\subsection{Verification Performance & Ablation Study}
+We analyze verification performance under various subspace constraints in Table~\ref{tab:ablation}. 
+
+\begin{table}[h]
+\centering
+\caption{Component ablation and baseline comparisons on IITD.}
+\label{tab:ablation}
+\begin{tabular}{@{}llccc@{}}
+\toprule
+\textbf{Experiment} & \textbf{Subspace} & \textbf{Acc. (\%)} & \textbf{EER (\%)} & \textbf{AUC} \\
+\midrule
+\multirow{6}{*}{PC1-k} & PC1-16 & 87.94 & 12.06 & 0.9471 \\
+                       & PC1-32 & 89.35 & 10.65 & 0.9564 \\
+                       & PC1-64 & 90.08 & 9.92 & 0.9605 \\
+                       & PC1-128 & 90.57 & 9.43 & 0.9619 \\
+                       & PC1-256 & 90.68 & 9.32 & 0.9619 \\
+                       & PC1-512 & 90.74 & 9.26 & 0.9618 \\
+\midrule
+\multirow{6}{*}{Top-k Fisher} & Top-16 & 87.55 & 12.45 & 0.9464 \\
+                              & Top-32 & 89.35 & 10.65 & 0.9561 \\
+                              & Top-64 & 90.09 & 9.91 & 0.9604 \\
+                              & Top-128 & 90.49 & 9.51 & 0.9620 \\
+                              & Top-256 & 90.66 & 9.34 & 0.9619 \\
+                              & Top-512 & 90.75 & 9.25 & 0.9618 \\
+\midrule
+\multirow{2}{*}{Fisher Ablation} & PC1-128 w/o Top-5 & 89.68 & 10.32 & 0.9494 \\
+                                 & PC1-128 w/o Btm-50 & 90.57 & 9.43 & 0.9619 \\
+\midrule
+Supervised Baseline & PCA+LDA ($k{=}128$) & 93.36 & 6.64 & 0.9733 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Removing the Top-5 Fisher PCs from PC1-128 causes EER to degrade from $9.43\%$ to $10.32\%$ ($+0.89\%$ absolute), whereas removing the Bottom-50 Fisher PCs has no effect ($9.43\%$), indicating that low-rank Fisher PCs carry negligible identity information. The PCA+LDA baseline yields an EER of $6.64\%$, outperforming unsupervised PCA ($9.43\%$). Preprocessing zero-mean ablation (not shown) degrades EER from $9.43\%$ to $33.38\%$.
+\\
+\textbf{Key Finding:} Biometric identity is concentrated in the top Fisher components. Supervised LDA baseline outperforms unsupervised PCA, highlighting the performance limits of unsupervised templates.
+
+\subsection{Saturation Analysis & Generalization Stress Test}
+Table~\ref{tab:significance_closed} outlines the EER statistics and paired $t$-test comparisons vs. $k_{\max}=512$ across 20 randomized splits for the **closed-set** protocol. Table~\ref{tab:significance_open} presents the results for the **open-set subject-disjoint** stress test.
+
+\begin{table*}[t]
+\centering
+\caption{Closed-set repeated-trial verification statistics (20 splits) and paired t-tests vs. 512 components.}
+\label{tab:significance_closed}
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+\textbf{PCA Dim $k$} & \textbf{Mean EER (\%)} & \textbf{Std (\%)} & \textbf{95\% CI (\%)} & \textbf{t-statistic vs. 512} & \textbf{p-value vs. 512} & \textbf{Significant? ($\alpha{=}0.01$)} \\
+\midrule
+16  & 11.17 & 0.36 & $[11.00, 11.34]$ & 38.91 & $1.40 \times 10^{-19}$ & Yes \\
+32  & 9.67  & 0.46 & $[9.45, 9.89]$   & 19.64 & $4.43 \times 10^{-14}$ & Yes \\
+64  & 8.98  & 0.39 & $[8.80, 9.16]$   & 4.07  & $6.57 \times 10^{-4}$  & Yes \\
+128 & 8.79  & 0.40 & $[8.60, 8.98]$   & 0.15  & $0.8822$               & No (OSP) \\
+256 & 8.75  & 0.42 & $[8.55, 8.95]$   & -2.35 & $0.0298$               & No \\
+512 & 8.78  & 0.40 & $[8.60, 8.96]$   & --    & --                     & -- \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\begin{table*}[t]
+\centering
+\caption{Open-set subject-disjoint repeated-trial statistics (20 splits) and paired t-tests vs. 512 components.}
+\label{tab:significance_open}
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+\textbf{PCA Dim $k$} & \textbf{Mean EER (\%)} & \textbf{Std (\%)} & \textbf{95\% CI (\%)} & \textbf{t-statistic vs. 512} & \textbf{p-value vs. 512} & \textbf{Significant? ($\alpha{=}0.01$)} \\
+\midrule
+16  & 13.11 & 0.93 & $[12.67, 13.55]$ & 35.23 & $9.00 \times 10^{-19}$ & Yes \\
+32  & 11.38 & 0.84 & $[10.99, 11.77]$ & 18.80 & $9.81 \times 10^{-14}$ & Yes \\
+64  & 10.47 & 0.81 & $[10.09, 10.85]$ & 7.84  & $2.24 \times 10^{-7}$  & Yes \\
+128 & 10.09 & 0.85 & $[9.69, 10.49]$  & 4.96  & $8.68 \times 10^{-5}$  & Yes \\
+256 & 9.85  & 0.77 & $[9.49, 10.21]$  & 1.38  & $0.1844$               & No (OSP) \\
+512 & 9.79  & 0.88 & $[9.38, 10.20]$  & --    & --                     & -- \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+Applying our mathematical rules to closed-set splits, OSP is detected at $k^*=128$:
+- **CI Overlap**: Confidence intervals of consecutive dimensions overlap starting from $k=64$ ($CI(64) \cap CI(128) = [8.80, 8.98] \neq \emptyset$), and hold for all subsequent pairs.
+- **Marginal Utility**: $\Delta U(128) = 8.98\% - 8.79\% = 0.19\% < 0.5\%$.
+- **Statistical Plateau**: Difference vs. 512 is not significant ($p = 0.8822 \ge 0.01$).
+
+Under the open-set subject-disjoint stress test, OSP shifts to $k^*=256$:
+- **CI Overlap**: Overlap starts at $k=64$ ($CI(64) \cap CI(128) = [10.09, 10.49] \neq \emptyset$) and holds continuously.
+- **Marginal Utility**: $\Delta U(256) = 10.09\% - 9.85\% = 0.24\% < 0.5\%$.
+- **Statistical Plateau**: EER at $k=128$ is significantly worse than at $512$ ($p = 8.68 \times 10^{-5} < 0.01$), whereas EER at $k=256$ is statistically equivalent to EER at $512$ ($p = 0.1844 \ge 0.01$).
+\\
+\textbf{Key Finding:} In closed-set verification, performance plateaus at $k=128$. Subject-disjoint open-set generalization requires a slightly larger latent representation of $k=256$ to stabilize on unseen subjects.
+
+\subsection{Explainability Score Analysis}
+Computing CAES++ (Eq.~\ref{eq:caes}) with fixed weights $\beta=1.0, \gamma=1.0, \mu=0.05$ yields: -121.60 ($k{=}16$), -64.04 ($k{=}32$), 2.20 ($k{=}64$), 70.35 ($k{=}128$), 120.62 ($k{=}256$), and 137.01 ($k{=}512$). The score peaks at $k=512$. 
+
+Global sensitivity analysis over a grid search of $\beta \in [0.1, 5.0]$, $\gamma \in [0.1, 5.0]$, and $\mu \in [0.01, 0.2]$ reveals that the optimal $k$ peaks at 512 in 61.5% of combinations, at 256 in 17.6%, and at 128 in 15.8% (corresponding to higher complexity penalties $\mu \geq 0.15$).
+\\
+\textbf{Key Finding:} CAES++ naturally peaks at $k=512$ under standard parameters due to the value of representation fidelity, but shifts to $k=128$ under higher complexity penalties, modeling the trade-off in resource-constrained platforms.
+
+% ===========================================================================
+% VIII. DISCUSSION
+% ===========================================================================
+\section{Discussion}
+\label{sec:discussion}
+
+Our results reveal a key divergence between representational fidelity and verification performance. While cumulative variance and reconstruction SSIM continue to grow monotonically up to $k=512$, EER plateaus at $k=128$ (closed-set) and $k=256$ (open-set). This indicates that the information added beyond these thresholds represents high-frequency geometric details and acquisition noise that improve reconstruction appearance but carry no class-discriminative biometric value. This is supported by the exploratory correlation matrix (Table~\ref{tab:correlation}): although EER and SSIM are strongly negatively correlated ($r = -0.864$ across dimensions), this is a non-causal trend. Improved reconstruction is not a direct proxy for biometric accuracy.
+
+\begin{table}[h]
+\centering
+\caption{Exploratory Pearson correlation matrix across dimensions.}
+\label{tab:correlation}
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+ & \textbf{Variance} & \textbf{SSIM} & \textbf{PSNR} & \textbf{EER} & \textbf{Acc.} \\
+\midrule
+\textbf{Variance} & 1.000 & 0.984 & 0.994 & -0.937 & 0.937 \\
+\textbf{SSIM}     & 0.984 & 1.000 & 0.997 & -0.864 & 0.864 \\
+\textbf{PSNR}     & 0.994 & 0.997 & 1.000 & -0.896 & 0.896 \\
+\textbf{EER}      & -0.937 & -0.864 & -0.896 & 1.000 & -1.000 \\
+\textbf{Accuracy} & 0.937 & 0.864 & 0.896 & -1.000 & 1.000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+This finding has practical implications for template design. As detailed in Table~\ref{tab:compression}, transitioning from raw float32 representations to compact PCA templates represents a significant Minimum Description Length (MDL) coding length reduction. For example, $k=128$ reduces template description complexity from $D \ln(D) \approx 159,005$ nats down to $k \ln(D) \approx 1,242$ nats, representing a $128\times$ coding length reduction with negligible biometric loss. Storing templates beyond the OSP yields zero security benefit while increasing storage size.
+
+\begin{table}[h]
+\centering
+\caption{Description complexity and compression trade-offs on IITD.}
+\label{tab:compression}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{PCA Dim $k$} & \textbf{Var. Ret. (\%)} & \textbf{EER (\%)} & \textbf{Size (Bytes)} & \textbf{MDL Reduction} \\
+\midrule
+16  & 45.56 & 12.06 & 64 & 1024.0$\times$ \\
+32  & 56.74 & 10.65 & 128 & 512.0$\times$ \\
+64  & 68.06 & 9.92 & 256 & 256.0$\times$ \\
+128 & 78.49 & 9.43 & 512 & 128.0$\times$ (OSP-CS) \\
+256 & 87.00 & 9.32 & 1024 & 64.0$\times$ (OSP-OS) \\
+512 & 93.75 & 9.26 & 2048 & 32.0$\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ===========================================================================
+% IX. LIMITATIONS
+% ===========================================================================
+\section{Limitations}
+\label{sec:limitations}
+
+While providing rigorous insights, several limitations must be noted:
+\begin{enumerate}
+    \item \textbf{Single-Dataset Constraint}: All evaluations are conducted on the IITD dataset. Multi-sensor cross-dataset validation is necessary to evaluate PCA eigenvector generalizability.
+    \item \textbf{Closed-Set Gallery vs. Generalization}: Although we added a subject-disjoint stress test to evaluate open-set representation generalizability, a true open-set verification scenario matching arbitrary subject templates on diverse sensors requires further evaluation.
+    \item \textbf{Controlled Lighting}: The IITD database is captured under relatively controlled conditions. Performance under severe out-of-plane rotation or extreme motion blur remains unassessed.
+\end{enumerate}
+
+% ===========================================================================
+% X. CONCLUSION
+% ===========================================================================
+\section{Conclusion}
+\label{sec:conclusion}
+
+This paper presented an explainable PCA framework for palmprint recognition, auditing linear representations across five levels of interpretability. By using statistical plateau, CI overlap, and marginal utility rules, we mathematically defined and identified the Operational Saturation Point (OSP), which occurs at $k=128$ for closed-set splits and shifts to $k=256$ under subject-disjoint open-set stress tests. We proposed a theoretically grounded CAES++ score based on Rate-Distortion and Information Bottleneck principles. The stabilized Fisher score and ablation studies mapped identity information to crease-encoding eigenvectors, proving that mid-variance components consistently capture discriminative biometric features. These findings provide transparent design rules for lightweight matching engines.
+
+% ===========================================================================
+% REFERENCES
+% ===========================================================================
+\begin{thebibliography}{99}
+
+\bibitem{kumar2008incorporating}
+A.~Kumar, ``Incorporating personal identification individualities into touchless palmprint verification,'' \emph{IEEE Trans. Inf. Forensics Security}, vol.~3, no.~3, pp.~512--520, Sep. 2008.
+
+\bibitem{zhang2003online}
+D.~Zhang, W.-K.~Kong, J.~You, and M.~Wong, ``Online palmprint identification,'' \emph{IEEE Trans. Pattern Anal. Mach. Intell.}, vol.~25, no.~9, pp.~1041--1050, Sep. 2003.
+
+\bibitem{kong2009survey}
+A.~Kong, D.~Zhang, and M.~Kamel, ``A survey of palmprint recognition,'' \emph{Pattern Recognit.}, vol.~42, no.~7, pp.~1408--1418, 2009.
+
+\bibitem{lu2003palmprint}
+G.~Lu, D.~Zhang, and K.~Wang, ``Palmprint recognition using eigenpalms features,'' \emph{Pattern Recognit. Lett.}, vol.~24, no.~9--10, pp.~1463--1467, 2003.
+
+\bibitem{turk1991eigenfaces}
+M.~Turk and A.~Pentland, ``Eigenfaces for recognition,'' \emph{J. Cogn. Neurosci.}, vol.~3, no.~1, pp.~71--86, 1991.
+
+\bibitem{lundberg2017shap}
+S.~M.~Lundberg and S.-I.~Lee, ``A unified approach to interpreting model predictions,'' in \emph{Adv. Neural Inf. Process. Syst. (NeurIPS)}, 2017, pp.~4765--4774.
+
+\bibitem{ribeiro2016lime}
+M.~T.~Ribeiro, S.~Singh, and C.~Guestrin, ```Why should I trust you?': Explaining the predictions of any classifier,'' in \emph{Proc. ACM SIGKDD Int. Conf. Knowl. Discovery Data Mining}, 2016, pp.~1135--1144.
+
+\bibitem{selvaraju2017gradcam}
+R.~R.~Selvaraju, M.~Cogswell, A.~Das, R.~Vedantam, D.~Parikh, and D.~Batra, ``Grad-CAM: Visual explanations from deep networks via gradient-based localization,'' in \emph{Proc. IEEE Int. Conf. Comput. Vis. (ICCV)}, 2017, pp.~618--626.
+
+\bibitem{jolliffe2002pca}
+I.~T.~Jolliffe, \emph{Principal Component Analysis}, 2nd~ed. Springer, 2002.
+
+\end{thebibliography}
+
+\end{document}

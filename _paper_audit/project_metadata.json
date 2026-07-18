@@ -1,0 +1,116 @@
+{
+  "project_name": "PCA-XAI-Palm print Verification",
+  "target_conference": "FISAT 2026",
+  "target_style": "Springer LNCS (llncs)",
+  "workspace_path": "d:\\0.Research\\AILLLL\\PCA-XAI-Palm - Copy (2)",
+  "authors": [
+    {
+      "name": "Nguyen Duc Bao Lam",
+      "email": "lam01662052827@gmail.com",
+      "affiliation": "FPT University",
+      "role": "Author"
+    },
+    {
+      "name": "Nguyen Cong Thinh",
+      "email": "nguyencongthinh17122006@gmail.com",
+      "affiliation": "FPT University",
+      "role": "Author"
+    },
+    {
+      "name": "Tran Trung Tin",
+      "email": "trungtin1218@gmail.com",
+      "affiliation": "FPT University",
+      "role": "Author"
+    },
+    {
+      "name": "Vo Hieu Thang",
+      "email": "thanhtuan21062000@gmail.com",
+      "affiliation": "FPT University",
+      "role": "Author"
+    },
+    {
+      "name": "Huy Nguyen Xuan",
+      "email": "huynx23@fpt.edu.vn",
+      "affiliation": "FPT University",
+      "role": "Corresponding Author"
+    },
+    {
+      "name": "Trung Nguyen Quoc",
+      "email": "trungnq46@fpt.edu.vn",
+      "affiliation": "FPT University",
+      "role": "Corresponding Author"
+    },
+    {
+      "name": "Tai Nguyen Trong",
+      "email": "taint51@fpt.edu.vn",
+      "affiliation": "FPT University",
+      "role": "Corresponding Author"
+    }
+  ],
+  "datasets": {
+    "IITD": {
+      "name": "IIT Delhi Touchless Palmprint Database v1.0",
+      "subjects": 230,
+      "classes": 460,
+      "images": 2601,
+      "split_protocol": "First 3 sorted images per class for training/gallery, remaining (typically 2-4) for testing/probes.",
+      "genuine_comparisons": 1221,
+      "imposter_comparisons": 560439
+    },
+    "Tongji": {
+      "name": "Tongji Contactless Palmprint Database",
+      "subjects_total": 300,
+      "classes_total": 600,
+      "images_total": 12000,
+      "evaluated_subset_classes": 100,
+      "split_protocol": "Session 1 for training/gallery (10 images/class), Session 2 for testing/probes (10 images/class).",
+      "genuine_comparisons_subset": 1000,
+      "imposter_comparisons_subset": 99000,
+      "anomalies_detected": "Identity swapping/shift affecting 110/600 classes (18.3%) resolved via Hungarian alignment."
+    }
+  },
+  "key_experimental_results_k128": {
+    "unsupervised_raw_pca_baseline_eer": "9.43%",
+    "standard_gabor_pca_baseline_eer": "8.51%",
+    "standard_gabor_xpca_min_max_eer": "10.73%",
+    "standard_gabor_xpca_residual_eta_02_eer": "8.49%",
+    "optimized_gabor_pca_baseline_eer": "8.01%",
+    "optimized_gabor_xpca_residual_sota_eer": "7.95%",
+    "optimal_hyperparameters_sota_k128": {
+      "gabor_orientations": 6,
+      "gabor_wavelength_lambda": 10.0,
+      "gabor_sigma": 5.0,
+      "downsample_size": [52, 52],
+      "shrinkage_lambda": 0.1,
+      "utility_weights": [0.0, 1.0, 0.0],
+      "utility_weights_description": "Fisher Only",
+      "residual_strength_eta": 0.02
+    }
+  },
+  "coordinate_collapse": {
+    "definition": "A geometric degeneration in angular metric spaces (like cosine similarity) when unconstrained non-uniform scaling (min-max normalization) is applied to embeddings. The metric tensor becomes ill-conditioned, causing projections to cluster along a single dominant coordinate axis.",
+    "condition_number_divergence": {
+      "formula": "kappa(M) = a_max^2 / a_min^2 = 1 / epsilon^2 -> infinity",
+      "implication": "Reduces matching space dimensionality from k to 1, destroying discriminative information."
+    },
+    "mitigation_residual_calibration": {
+      "formula": "a_i = 1 + eta * S_norm_i",
+      "condition_number_bound": "kappa(M) = (1 + eta)^2 / 1 <= 1.32 (for eta <= 0.15)",
+      "implication": "Restricts deformation, preventing collapse while emphasizing high-utility biometric features."
+    }
+  },
+  "latex_drafts": {
+    "explainable_pca_manuscript": {
+      "file_path": "paper/main.tex",
+      "title": "Explainable PCA Framework for Palmprint Recognition: Feature Compression, Interpretability, and Verification Performance",
+      "current_style": "IEEEtran (conference)",
+      "status": "Needs conversion to Springer LNCS"
+    },
+    "coordinate_collapse_manuscript": {
+      "file_path": "XPCA-1.tex",
+      "title": "Diagnosing and Mitigating Coordinate Collapse in Utility-Weighted Subspace Metrics for Biometrics",
+      "current_style": "IEEEtran (conference)",
+      "status": "Needs conversion to Springer LNCS"
+    }
+  }
+}

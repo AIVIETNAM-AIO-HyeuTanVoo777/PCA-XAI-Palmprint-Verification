@@ -1,0 +1,33 @@
+subspace_dimension,preprocessing,method,hyperparameters,eer_percent,auc,tuning_protocol,status
+32,None,Raw PCA,"No preprocessing, standard PCA",10.646653783908686,0.9563952154162686,Unbiased (no test tuning),REPRODUCED
+32,None,Raw XPCA (Min-Max),"No preprocessing, standard PCA",16.62714407812447,0.9198522138413904,Unbiased (no test tuning),REPRODUCED
+32,Gabor (4 dirs),Gabor + PCA,"Gabor orientations=4, lambd=8.0, sigma=4.0, downsample=64x64",10.06309339642673,0.956771142636152,Unbiased (no test tuning),REPRODUCED
+32,Gabor (4 dirs),Gabor + XPCA (Min-Max),"Gabor orientations=4, lambd=8.0, sigma=4.0, downsample=64x64",11.471899707193822,0.9516156530497076,Unbiased (no test tuning),REPRODUCED
+32,Gabor (4 dirs),Gabor + XPCA (Softmax),"Gabor orientations=4, lambd=8.0, sigma=4.0, downsample=64x64",12.854298148415795,0.941378659401495,Unbiased (no test tuning),REPRODUCED
+32,Gabor (4 dirs),Gabor + XPCA (Residual),"Gabor orientations=4, lambd=8.0, sigma=4.0, downsample=64x64",10.17086605321899,0.9568872838934344,Unbiased (no test tuning),REPRODUCED
+64,None,Raw PCA,"No preprocessing, standard PCA",9.908482457502064,0.9605493788500324,Unbiased (no test tuning),REPRODUCED
+64,None,Raw XPCA (Min-Max),"No preprocessing, standard PCA",14.973975758289482,0.9331401999578196,Unbiased (no test tuning),REPRODUCED
+64,Gabor (4 dirs),Gabor + PCA,"Gabor orientations=4, lambd=8.0, sigma=4.0, downsample=64x64",8.928179516414811,0.9618016329567451,Unbiased (no test tuning),REPRODUCED
+64,Gabor (4 dirs),Gabor + XPCA (Min-Max),"Gabor orientations=4, lambd=8.0, sigma=4.0, downsample=64x64",11.12601014561799,0.954793836086894,Unbiased (no test tuning),REPRODUCED
+64,Gabor (4 dirs),Gabor + XPCA (Softmax),"Gabor orientations=4, lambd=8.0, sigma=4.0, downsample=64x64",12.706824471530354,0.9422610962171912,Unbiased (no test tuning),REPRODUCED
+64,Gabor (4 dirs),Gabor + XPCA (Residual),"Gabor orientations=4, lambd=8.0, sigma=4.0, downsample=64x64",8.992593306318794,0.961465426850598,Unbiased (no test tuning),REPRODUCED
+128,None,Raw PCA,"No preprocessing, standard PCA",9.433319237240804,0.9619342093527508,Unbiased (no test tuning),REPRODUCED
+128,None,Raw XPCA (Min-Max),"No preprocessing, standard PCA",13.579890050478287,0.941033285479336,Unbiased (no test tuning),REPRODUCED
+128,Gabor (4 dirs),Gabor + PCA,"Gabor orientations=4, lambd=8.0, sigma=4.0, downsample=64x64",8.518322243812442,0.9647195689735556,Unbiased (no test tuning),REPRODUCED
+128,Gabor (4 dirs),Gabor + XPCA (Min-Max),"Gabor orientations=4, lambd=8.0, sigma=4.0, downsample=64x64",10.733906812338189,0.956270141621268,Unbiased (no test tuning),REPRODUCED
+128,Gabor (4 dirs),Gabor + XPCA (Softmax),"Gabor orientations=4, lambd=8.0, sigma=4.0, downsample=64x64",12.610828297102811,0.9425361672314508,Unbiased (no test tuning),REPRODUCED
+128,Gabor (4 dirs),Gabor + XPCA (Residual),"Gabor orientations=4, lambd=8.0, sigma=4.0, downsample=64x64",8.596207615815459,0.9641402166333516,Unbiased (no test tuning),REPRODUCED
+256,None,Raw PCA,"No preprocessing, standard PCA",9.320015202368143,0.9619193714759868,Unbiased (no test tuning),REPRODUCED
+256,None,Raw XPCA (Min-Max),"No preprocessing, standard PCA",12.856617758578542,0.9453706159877572,Unbiased (no test tuning),REPRODUCED
+256,Gabor (4 dirs),Gabor + PCA,"Gabor orientations=4, lambd=8.0, sigma=4.0, downsample=64x64",8.102755161578688,0.9666651063770108,Unbiased (no test tuning),REPRODUCED
+256,Gabor (4 dirs),Gabor + XPCA (Min-Max),"Gabor orientations=4, lambd=8.0, sigma=4.0, downsample=64x64",10.56323703382527,0.9572606237827608,Unbiased (no test tuning),REPRODUCED
+256,Gabor (4 dirs),Gabor + XPCA (Softmax),"Gabor orientations=4, lambd=8.0, sigma=4.0, downsample=64x64",12.61421849657144,0.9426762440364278,Unbiased (no test tuning),REPRODUCED
+256,Gabor (4 dirs),Gabor + XPCA (Residual),"Gabor orientations=4, lambd=8.0, sigma=4.0, downsample=64x64",8.286272011762206,0.965977260785438,Unbiased (no test tuning),REPRODUCED
+512,None,Raw PCA,"No preprocessing, standard PCA",9.248285718873955,0.9617795146050674,Unbiased (no test tuning),REPRODUCED
+512,None,Raw XPCA (Min-Max),"No preprocessing, standard PCA",12.455592847749712,0.9469162555510936,Unbiased (no test tuning),REPRODUCED
+512,Gabor (4 dirs),Gabor + PCA,"Gabor orientations=4, lambd=8.0, sigma=4.0, downsample=64x64",7.869277477120613,0.967952272275312,Unbiased (no test tuning),REPRODUCED
+512,Gabor (4 dirs),Gabor + XPCA (Min-Max),"Gabor orientations=4, lambd=8.0, sigma=4.0, downsample=64x64",10.15445035052878,0.9582469819980056,Unbiased (no test tuning),REPRODUCED
+512,Gabor (4 dirs),Gabor + XPCA (Softmax),"Gabor orientations=4, lambd=8.0, sigma=4.0, downsample=64x64",12.600657698696915,0.9427242042745246,Unbiased (no test tuning),REPRODUCED
+512,Gabor (4 dirs),Gabor + XPCA (Residual),"Gabor orientations=4, lambd=8.0, sigma=4.0, downsample=64x64",8.051277659120796,0.9671965313596248,Unbiased (no test tuning),REPRODUCED
+128,Gabor (6 dirs),"Gabor + XPCA (Optimized, Fisher Only)","Gabor orientations=6, lambd=10.0, sigma=5.0, downsample=52x52, eta=0.02, weights=(0.0, 1.0, 0.0), shrinkage=0.1",7.953764816509917,0.9699638069695627,Leaked (hyperparameters grid-searched on IITD Test EER),LEGACY_TUNED_ON_TEST
+128,Gabor (6 dirs),"Gabor + XPCA (Optimized, Balanced)","Gabor orientations=6, lambd=10.0, sigma=5.0, downsample=52x52, eta=0.1, weights=(0.0, 0.8, 0.2), shrinkage=0.7",7.992038384195246,0.9697920359871234,Leaked (hyperparameters grid-searched on IITD Test EER),LEGACY_TUNED_ON_TEST

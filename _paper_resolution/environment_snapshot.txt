@@ -1,0 +1,14 @@
+Python Version: 3.13.13 (tags/v3.13.13:01104ce, Apr  7 2026, 19:25:48) [MSC v.1944 64 bit (AMD64)]
+Scikit-learn Version: 1.9.0
+Scipy Version: 1.17.1
+Numpy Version: 2.4.6
+Pandas Version: 3.0.3
+OpenCV Version: 4.13.0
+OS Platform: Windows-11-10.0.22631-SP0 (or Windows Server equivalent)
+Architecture: AMD64
+Execution Timestamp: 2026-07-18T18:24:51Z
+Execution Directory: D:\0.Research\AILLLL\PCA-XAI-Palm - Copy (2)
+Dataset Evaluated: IIT Delhi (IITD) Touchless Palmprint Database
+Evaluation Protocol: Verification (Cosine Similarity Matching), 3 Enrollment images per class, remaining as Probes.
+Deterministic Split: Split based on sorted filenames (First 3 enrollment, remaining probes).
+Randomized Splits: 30 independent trials with seeds 0-29.

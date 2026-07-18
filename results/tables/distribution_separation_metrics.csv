@@ -1,0 +1,8 @@
+metric,value
+separation_distance_d,2.8480653762817383
+bhattacharyya_distance,1.027465581893921
+overlap_area,0.18144867846074297
+mean_genuine,0.6440883874893188
+std_genuine,0.25119903683662415
+mean_imposter,-0.0011167714837938547
+std_imposter,0.19884967803955078
