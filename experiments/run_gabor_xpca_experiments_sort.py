@@ -11,9 +11,16 @@ from preprocessing.gabor import extract_gabor_features
 from explainability.xpca import XPCACalibration
 from evaluation.metrics import evaluate_verification
 
+import argparse
+
 def main():
+    parser = argparse.ArgumentParser(description="Run Gabor+XPCA Benchmark")
+    parser.add_argument("--max_components", type=int, default=512, help="Maximum number of PCA components to extract and analyze.")
+    args = parser.parse_args()
+    max_comp = args.max_components
+    
     print("=" * 80)
-    print("RUNNING BENCHMARK: GABOR PREPROCESSING + XPCA DIAGONAL CALIBRATION")
+    print(f"RUNNING BENCHMARK: GABOR PREPROCESSING + XPCA DIAGONAL CALIBRATION (MAX={max_comp})")
     print("=" * 80)
     
     # 0. Setup directories
@@ -39,26 +46,31 @@ def main():
     X_train_gabor = X_train_gabor - np.mean(X_train_gabor, axis=1, keepdims=True)
     X_test_gabor = X_test_gabor - np.mean(X_test_gabor, axis=1, keepdims=True)
     
-    # 3. Fit baseline PCAs (512 components)
-    print("\nFitting PCA on raw pixels...")
-    pca_raw = PCA(n_components=512, random_state=42)
+    # 3. Fit baseline PCAs (max_comp components)
+    print(f"\nFitting PCA on raw pixels (n={max_comp})...")
+    pca_raw = PCA(n_components=max_comp, random_state=42)
     pca_raw.fit(X_train_raw)
     
-    print("Fitting PCA on Gabor features...")
-    pca_gabor = PCA(n_components=512, random_state=42)
+    print(f"Fitting PCA on Gabor features (n={max_comp})...")
+    pca_gabor = PCA(n_components=max_comp, random_state=42)
     pca_gabor.fit(X_train_gabor)
     
-    # Pre-compute Sort mode on the full 512-dimensional Gabor space
-    print("\nPre-computing XPCA (Sort) on full 512 Gabor dimensions for Feature Selection...")
-    tr_gabor_full_512 = pca_gabor.transform(X_train_gabor)
-    te_gabor_full_512 = pca_gabor.transform(X_test_gabor)
+    # Pre-compute Sort mode on the full max_comp-dimensional Gabor space
+    print(f"\nPre-computing XPCA (Sort) on full {max_comp} Gabor dimensions for Feature Selection...")
+    tr_gabor_full_max = pca_gabor.transform(X_train_gabor)
+    te_gabor_full_max = pca_gabor.transform(X_test_gabor)
     xpca_sort_full = XPCACalibration(scale_method="sort", bootstrap_iter=100)
-    xpca_sort_full.fit(tr_gabor_full_512, y_train, pca_gabor.explained_variance_)
-    tr_gabor_sort_full = xpca_sort_full.transform(tr_gabor_full_512)
-    te_gabor_sort_full = xpca_sort_full.transform(te_gabor_full_512)
+    xpca_sort_full.fit(tr_gabor_full_max, y_train, pca_gabor.explained_variance_)
+    tr_gabor_sort_full = xpca_sort_full.transform(tr_gabor_full_max)
+    te_gabor_sort_full = xpca_sort_full.transform(te_gabor_full_max)
 
     # 4. Comparative loop across dimensions
-    dimensions = [32, 64, 128, 256, 512]
+    base_dimensions = [32, 64, 128, 256, 512]
+    dimensions = [d for d in base_dimensions if d <= max_comp]
+    if max_comp not in dimensions:
+        dimensions.append(max_comp)
+    dimensions.sort()
+    
     records = []
     
     for k in dimensions:
