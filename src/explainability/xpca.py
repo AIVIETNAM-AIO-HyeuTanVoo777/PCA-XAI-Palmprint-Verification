@@ -150,7 +150,7 @@ class XPCACalibration:
     """
     Calibration class implementing utility-guided diagonal scaling.
     """
-    def __init__(self, alpha=0.2, beta=0.6, gamma=0.2, scale_method="min-max", temp=1.0, eta=0.1, bootstrap_iter=100):
+    def __init__(self, alpha=0.2, beta=0.6, gamma=0.2, scale_method="min-max", temp=1.0, eta=0.1, bootstrap_iter=100, whitening_power=0.0):
         self.alpha = alpha
         self.beta = beta
         self.gamma = gamma
@@ -158,24 +158,37 @@ class XPCACalibration:
         self.temp = temp
         self.eta = eta
         self.bootstrap_iter = bootstrap_iter
+        self.whitening_power = whitening_power
         self.weights_ = None
         self.V_ = None
         self.D_ = None
         self.N_ = None
         self.sort_indices_ = None
+        self.whitening_scale_ = None
         
     def fit(self, train_proj, y_train, eigenvalues):
         k = train_proj.shape[1]
         
+        # Apply fractional whitening if specified
+        if self.whitening_power > 0.0:
+            self.whitening_scale_ = np.clip(eigenvalues[:k], 1e-9, None) ** self.whitening_power
+            # Scale training projections
+            train_proj = train_proj / self.whitening_scale_
+            # Adjust eigenvalue spectrum for Fisher score calculation
+            eigenvalues_adj = eigenvalues[:k] / (self.whitening_scale_ ** 2)
+        else:
+            self.whitening_scale_ = None
+            eigenvalues_adj = eigenvalues[:k]
+            
         # 1. Variance score (proportion of explained variance)
         total_var = np.sum(eigenvalues)
         self.V_ = eigenvalues[:k] / total_var
         
-        # 2. Fisher discriminability score
-        self.D_ = compute_fisher_scores(train_proj, y_train, eigenvalues)
+        # 2. Fisher discriminability score (using adjusted eigenvalues)
+        self.D_ = compute_fisher_scores(train_proj, y_train, eigenvalues_adj)
         
-        # 3. Bootstrap instability score
-        self.N_ = compute_bootstrap_instability(train_proj, y_train, eigenvalues, n_iterations=self.bootstrap_iter)
+        # 3. Bootstrap instability score (using adjusted eigenvalues)
+        self.N_ = compute_bootstrap_instability(train_proj, y_train, eigenvalues_adj, n_iterations=self.bootstrap_iter)
         
         # 4. Compute additive raw utility score
         raw_utility = self.alpha * self.V_ + self.beta * self.D_ - self.gamma * self.N_
@@ -198,6 +211,11 @@ class XPCACalibration:
         """
         if self.weights_ is None:
             raise ValueError("XPCACalibration has not been fitted yet.")
+            
+        # Apply whitening scale first if configured
+        if self.whitening_scale_ is not None:
+            k_proj = projections.shape[1]
+            projections = projections / self.whitening_scale_[:k_proj]
             
         if self.scale_method == "sort":
             return projections[:, self.sort_indices_]
