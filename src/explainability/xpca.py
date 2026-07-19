@@ -169,7 +169,7 @@ class XPCACalibration:
         
         # 1. Variance score (proportion of explained variance)
         total_var = np.sum(eigenvalues)
-        self.V_ = eigenvalues[:k] / total_var
+        self.V_ = eigenvalues[:k]
         
         # 2. Fisher discriminability score
         self.D_ = compute_fisher_scores(train_proj, y_train, eigenvalues)
@@ -178,7 +178,7 @@ class XPCACalibration:
         self.N_ = compute_bootstrap_instability(train_proj, y_train, eigenvalues, n_iterations=self.bootstrap_iter)
         
         # 4. Compute additive raw utility score
-        raw_utility = self.alpha * self.V_ + self.beta * self.D_ - self.gamma * self.N_
+        raw_utility = self.alpha * self.V_ / total_var + self.beta * self.D_ - self.gamma * self.N_
         
         # 5. Normalize weights
         self.weights_ = normalize_utility_scores(raw_utility, method=self.scale_method, temp=self.temp, eta=self.eta)
